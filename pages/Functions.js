@@ -4,18 +4,7 @@ import {Alert} from 'react-native';
 
 const read_store_async = async (event, userdata) => {
   let userdata_obj = JSON.parse(userdata);
-  console.log(
-    userdata_obj.owner.owner_name,
-    userdata_obj.owner.owner_password,
-    userdata_obj.owner.MailId,
-    userdata_obj.owner.PhoneNumber,
-    userdata_obj.owner.Property_name,
-    userdata_obj.owner.Area,
-    userdata_obj.owner.State,
-    userdata_obj.owner.country,
-    userdata_obj.owner.Street,
-    userdata_obj.owner.Door_Number,
-  );
+ 
   switch (event) {
     case 'owner_event':
       db.transaction(function (tx) {
@@ -44,33 +33,19 @@ const read_store_async = async (event, userdata) => {
       break;
 
     case 'location_event':
-      if (storedValue_obj.location.length <= 0) {
-        storedValue_obj.location.push(userdata_obj);
-
-        let string_data = JSON.stringify(storedValue_obj);
-        console.log('data===?', string_data);
-        await AsyncStorage.setItem('user_config', string_data);
-        return 'data is updated';
-      } else {
-        let loc_status = 0,
-          loc_len = storedValue_obj.location.length;
-        for (let x = 0; x < loc_len; x++) {
-          if (userdata_obj == storedValue_obj.location[x]) {
-            loc_status = 1;
-            break;
-          }
-        }
-        if (loc_status == 0) {
-          storedValue_obj.location.push(userdata_obj);
-          let string_data1 = JSON.stringify(storedValue_obj);
-          console.log('data===?', string_data1);
-          await AsyncStorage.setItem('user_config', string_data1);
-          return 'data is updated';
-        } else {
-          loc_status = 0;
-          return 'same data found ';
-        }
-      }
+      db.transaction(function (tx) {
+        tx.executeSql(
+          `INSERT INTO location_reg ( location)
+               VALUES (?)`,
+          [userdata],
+          (tx, results) => {
+            console.log('Results', results.rowsAffected);
+            if (results.rowsAffected > 0) {
+            return 'Data is updated'
+            } else return 'same data found';
+          },
+        );
+      });
 
       break;
 

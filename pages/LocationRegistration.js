@@ -28,6 +28,9 @@ import {useFocusEffect} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {loadOptions} from '@babel/core';
 
+import {openDatabase} from 'react-native-sqlite-storage';
+var db = openDatabase({name: 'UserDatabase.db'});
+
 import {
   //check_password,
   read_store_async,
@@ -47,11 +50,19 @@ const LocationRegistration = ({navigation}) => {
 
   const retrieveData = async () => {
     try {
-      const value = await AsyncStorage.getItem('user_config');
-      let async_data = JSON.parse(value);
+      // const value = await AsyncStorage.getItem('user_config');
+      db.transaction(tx => {
+        tx.executeSql('SELECT * FROM location_reg', [], (tx, results) => {
+          var temp = [];
+          for (let i = 0; i < results.rows.length; ++i)
+            temp.push(results.rows.item(i));
+          setasyncloc(temp);
+          // console.log("items",temp);
+        });
+      });
+
       //console.log('async data loc:', async_data);
       // console.log('async data app:', async_data.appliance);
-      setasyncloc(async_data.location);
     } catch (error) {
       console.log('error', error);
     }
@@ -64,23 +75,23 @@ const LocationRegistration = ({navigation}) => {
       let loc_del = await delete_registrations('location_event', userdata);
 
       if (loc_del == 'succesfully deleted') {
-        navigation.navigate('DummyScreen',{
-          paramKey: "LocationRegistration_delete",
-        })
+        navigation.navigate('DummyScreen', {
+          paramKey: 'LocationRegistration_delete',
+        });
 
-      //   Alert.alert(
-      //     'Success',
-      //     'deletion',
-      //     [
-      //       {
-      //         text: 'Ok',
-      //         onPress: () => navigation.navigate('SecondPage'),
-      //       },
-      //     ],
+        //   Alert.alert(
+        //     'Success',
+        //     'deletion',
+        //     [
+        //       {
+        //         text: 'Ok',
+        //         onPress: () => navigation.navigate('SecondPage'),
+        //       },
+        //     ],
 
-      //     {cancelable: false},
-      //   );
-       }
+        //     {cancelable: false},
+        //   );
+      }
     };
 
     Alert.alert(
@@ -109,44 +120,27 @@ const LocationRegistration = ({navigation}) => {
     }
     let data2 = JSON.stringify(LocationName.toUpperCase());
     if (data2 != null) {
-      let loc_add = await read_store_async('location_event', data2);
-      if (loc_add == 'data is updated') {
-        navigation.navigate('DummyScreen',{
-          paramKey: "LocationRegistration",
-        })
-
-        // Alert.alert(
-
-        //   'Success',
-        //   'Data is updated',
-        //   [
-        //     {
-        //       text: 'Ok',
-        //       onPress: () => navigation.navigate('SecondPage'),
-        //     },
-        //   ],
-
-        //   {cancelable: false},
-        // );
-      } else if (loc_add == 'same data found ') {
-        navigation.navigate('DummyScreen',{
-          paramKey: "LocationRegistration_samedata",
-        })
-        // Alert.alert(
-        //   'location name already present ',
-        //   'please insert new location name',
-        //   [
-        //     {
-        //       text: 'Ok',
-        //       onPress: () => navigation.navigate('LocationRegistration'),
-        //     },
-        //   ],
-
-        //   {cancelable: false},
-        // );
-      }
+      db.transaction(function (tx) {
+        tx.executeSql(
+          `INSERT INTO location_reg (location)
+               VALUES (?)`,
+          [data2],
+          (tx, results) => {
+            console.log('Results', results.rowsAffected);
+            if (results.rowsAffected > 0) {
+              navigation.navigate('DummyScreen', {
+                paramKey: 'LocationRegistration',
+              });
+            }
+          },
+          (tx, error) => {
+            navigation.navigate('DummyScreen', {
+              paramKey: 'LocationRegistration_samedata',
+            });
+          },
+        );
+      });
     }
-    return;
   };
 
   return (
@@ -206,7 +200,7 @@ const LocationRegistration = ({navigation}) => {
                   backgroundColor: 'beige',
                   bottom: 0,
                 }}>
-                {item}
+                {item.location}
               </Text>
               <Left>
                 <Button
